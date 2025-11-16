@@ -52,4 +52,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    //JWT methods
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+    public function getJWTCustomClaims()
+    {
+        return [];
+    }
 }
