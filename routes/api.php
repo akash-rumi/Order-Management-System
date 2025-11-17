@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\RefreshController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductVariantController;
 use App\Http\Controllers\Api\V1\InventoryController;
+use App\Http\Controllers\Api\V1\OrderController;
 
 
 /*
@@ -38,6 +39,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/products/{product}/variants', [ProductVariantController::class, 'index']);
         Route::get('/variants/{variant}', [ProductVariantController::class, 'show']);
 
+        Route::post('/orders', [OrderController::class, 'store']);                    // create pending
+        Route::post('/orders/{order}/confirm', [OrderController::class, 'confirm']); // confirm & deduct stock
+        Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);   // cancel & restore
+        Route::post('/orders/{order}/status', [OrderController::class, 'changeStatus']);
+        Route::get('/orders', [OrderController::class, 'index']);
+        Route::get('/orders/{order}', [OrderController::class, 'show']);
     });
 
     Route::middleware(['auth:api','role:admin|vendor'])->group(function () {
