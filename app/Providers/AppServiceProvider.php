@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+
 use App\Repositories\ProductRepository;
 use App\Repositories\ProductVariantRepository;
+use App\Services\InventoryService;
+use App\Repositories\InventoryRepository;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +25,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ProductVariantRepository::class, function ($app) {
             return new ProductVariantRepository();
         });
+        $this->app->singleton(InventoryRepository::class, function($app){
+            return new InventoryRepository();
+        });
+        $this->app->singleton(InventoryService::class, function($app){
+            return new InventoryService($app->make(InventoryRepository::class));
+        });
+
     }
 
     /**

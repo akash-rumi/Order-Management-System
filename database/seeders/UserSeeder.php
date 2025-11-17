@@ -5,33 +5,37 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
     public function run()
     {
         // Admin
-        User::create([
+        $adminUser = User::create([
             'name' => 'Admin User',
             'email' => 'admin@test.com',
             'password' => Hash::make('password'),
-            'role' => 'admin'
-        ]);
-
+            'role' => 'admin',
+        ]); 
+        $adminUser->assignRole('admin'); 
+        
         // Vendor
-        User::create([
+        $vendorUser = User::create([
             'name' => 'Vendor One',
             'email' => 'vendor1@test.com',
             'password' => Hash::make('password'),
-            'role' => 'vendor'
+            'role' => 'vendor',
         ]);
+        $vendorUser->assignRole('vendor');
 
         // Customer
-        User::create([
+        $customerUser = User::create([
             'name' => 'Customer One',
             'email' => 'customer1@test.com',
             'password' => Hash::make('password'),
-            'role' => 'customer'
+            'role' => 'customer',
         ]);
+        $customerUser->assignRole('customer');
     }
 }
