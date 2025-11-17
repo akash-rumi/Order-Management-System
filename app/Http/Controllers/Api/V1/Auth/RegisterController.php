@@ -41,6 +41,8 @@ class RegisterController extends Controller
             return response()->json(['message' => 'Registration failed'], 500);
         }
 
+        $user->assignRole($data['role']);
+        
         return response()->json([
             'message' => 'Registration successful',
             'user'    => $user

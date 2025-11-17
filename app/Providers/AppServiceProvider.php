@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Repositories\ProductRepository;
+use App\Repositories\ProductVariantRepository;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,7 +15,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton(ProductRepository::class, function ($app) {
+            return new ProductRepository();
+        });
+        $this->app->singleton(ProductVariantRepository::class, function ($app) {
+            return new ProductVariantRepository();
+        });
     }
 
     /**
