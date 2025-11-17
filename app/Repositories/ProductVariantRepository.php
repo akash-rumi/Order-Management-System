@@ -4,37 +4,93 @@ namespace App\Repositories;
 
 use App\Models\ProductVariant;
 use App\Models\Inventory;
+use Illuminate\Support\Facades\DB;
 
 class ProductVariantRepository
 {
-    public function create(array $data, int $productId): ProductVariant
+    /**
+     * Get all variants for a specific product
+     */
+    public function getByProductId(int $productId)
     {
-        return ProductVariant::create([
-            'product_id' => $productId,
-            'sku' => $data['sku'],
-            'price' => $data['price'],
-            'sale_price' => $data['sale_price'] ?? null,
-            'attributes' => $data['attributes'] ?? null,
-        ]);
+        return ProductVariant::with('inventory')
+            ->where('product_id', $productId)
+            ->get();
     }
 
-    public function update(ProductVariant $variant, array $data): bool
+    /**
+     * Get a single variant by id
+     */
+    public function find(int $id): ?ProductVariant
     {
-        return $variant->update($data);
+        return ProductVariant::with('inventory')->find($id);
     }
 
-    public function delete(ProductVariant $variant): bool
+    /**
+     * Create a product variant
+     */
+    public function create(array $data): ProductVariant
     {
-        return $variant->delete();
+        return ProductVariant::create($data);
     }
 
-    public function createInventory(int $variantId, array $inventoryData): Inventory
+    /**
+     * Update a product variant
+     */
+    public function update(ProductVariant $variant, array $data): ProductVariant
+    {
+        $variant->update($data);
+        return $variant;
+    }
+
+    /**
+     * Delete a variant
+     */
+    public function delete(ProductVariant $variant): void
+    {
+        $variant->delete();
+    }
+
+    /**
+     * Create inventory row for variant
+     */
+    public function createInventory(int $variantId, array $options = [])
     {
         return Inventory::create([
             'variant_id' => $variantId,
-            'available' => $inventoryData['available'] ?? 0,
+            'available' => $options['available'] ?? 0,
             'reserved' => 0,
-            'low_stock_threshold' => $inventoryData['low_stock_threshold'] ?? 5,
+            'low_stock_threshold' => $options['low_stock_threshold'] ?? 5,
         ]);
+    }
+
+    /**
+     * Get inventory row for a variant
+     */
+    public function getInventory(int $variantId): ?Inventory
+    {
+        return Inventory::where('variant_id', $variantId)->first();
+    }
+
+    /**
+     * Update inventory row
+     */
+    public function updateInventory(Inventory $inventory, array $options)
+    {
+        $inventory->update([
+            'available' => $options['available'] ?? $inventory->available,
+            'reserved' => $inventory->reserved,
+            'low_stock_threshold' => $options['low_stock_threshold'] ?? $inventory->low_stock_threshold,
+        ]);
+
+        return $inventory;
+    }
+
+    /**
+     * Delete inventory when variant is deleted
+     */
+    public function deleteInventory(int $variantId): void
+    {
+        Inventory::where('variant_id', $variantId)->delete();
     }
 }

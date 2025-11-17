@@ -35,6 +35,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/products', [ProductController::class, 'index']);
         Route::get('/products/{product}', [ProductController::class, 'show']);
         Route::get('/inventories/{variant}', [InventoryController::class, 'show']);
+        Route::get('/products/{product}/variants', [ProductVariantController::class, 'index']);
+        Route::get('/variants/{variant}', [ProductVariantController::class, 'show']);
+
     });
 
     Route::middleware(['auth:api','role:admin|vendor'])->group(function () {

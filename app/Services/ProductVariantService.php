@@ -10,49 +10,78 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 class ProductVariantService
 {
-    public function __construct(
-        private ProductVariantRepository $repository
-    ) {}
+    protected $repo;
 
-    public function store(Request $request, Product $product): ProductVariant
+    public function __construct(ProductVariantRepository $repo)
     {
-        $this->authorizeOwnership($request->user(), $product);
-
-        $data = $request->only(['sku', 'price', 'sale_price', 'attributes']);
-        $variant = $this->repository->create($data, $product->id);
-
-        $inventoryData = [
-            'available' => (int) $request->input('initial_stock', 0),
-            'low_stock_threshold' => (int) $request->input('low_stock_threshold', 5),
-        ];
-        $this->repository->createInventory($variant->id, $inventoryData);
-
-        return $variant;
+        $this->repo = $repo;
     }
 
-    public function update(Request $request, ProductVariant $variant): ProductVariant
+    /**
+     * Create a variant and inventory
+     */
+    public function createVariant(int $productId, array $data): ProductVariant
     {
-        $product = $variant->product;
-        $this->authorizeOwnership($request->user(), $product);
+        return DB::transaction(function () use ($productId, $data) {
 
-        $data = $request->only(['sku', 'price', 'sale_price', 'attributes']);
-        $this->repository->update($variant, $data);
+            // 1. Create the variant
+            $variant = $this->repo->create([
+                'product_id'   => $productId,
+                'sku'          => $data['sku'],
+                'price'        => $data['price'],
+                'sale_price'   => $data['sale_price'] ?? null,
+                'attributes'   => $data['attributes'] ?? null,
+            ]);
 
-        return $variant->fresh();
+            // 2. Create the inventory
+            $this->repo->createInventory($variant->id, [
+                'available' => $data['initial_stock'] ?? 0,
+                'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
+            ]);
+
+            return $variant->fresh('inventory');
+        });
     }
 
-    public function destroy(Request $request, ProductVariant $variant): void
+    /**
+     * Update variant & inventory
+     */
+    public function updateVariant(ProductVariant $variant, array $data): ProductVariant
     {
-        $product = $variant->product;
-        $this->authorizeOwnership($request->user(), $product);
+        return DB::transaction(function () use ($variant, $data) {
 
-        $this->repository->delete($variant);
+            // Update variant first
+            $this->repo->update($variant, [
+                'sku'        => $data['sku'] ?? $variant->sku,
+                'price'      => $data['price'] ?? $variant->price,
+                'sale_price' => array_key_exists('sale_price', $data)
+                                ? $data['sale_price']
+                                : $variant->sale_price,
+                'attributes' => $data['attributes'] ?? $variant->attributes,
+            ]);
+
+            // Update inventory
+            $inventory = $this->repo->getInventory($variant->id);
+
+            if ($inventory) {
+                $this->repo->updateInventory($inventory, [
+                    'available' => $data['initial_stock'] ?? $inventory->available,
+                    'low_stock_threshold' => $data['low_stock_threshold'] ?? $inventory->low_stock_threshold,
+                ]);
+            }
+
+            return $variant->fresh('inventory');
+        });
     }
 
-    private function authorizeOwnership($user, Product $product): void
+    /**
+     * Delete variant + inventory
+     */
+    public function deleteVariant(ProductVariant $variant): void
     {
-        if ($user->hasRole('vendor') && $product->vendor_id !== $user->id) {
-            throw new AuthorizationException('Forbidden: Unauthorized to manage this product.');
-        }
+        DB::transaction(function () use ($variant) {
+            $this->repo->deleteInventory($variant->id);
+            $this->repo->delete($variant);
+        });
     }
 }
