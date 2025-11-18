@@ -7,6 +7,8 @@ use App\Models\ProductVariant;
 use App\Repositories\ProductVariantRepository;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
+
 
 class ProductVariantService
 {
@@ -26,11 +28,11 @@ class ProductVariantService
 
             // 1. Create the variant
             $variant = $this->repo->create([
-                'product_id'   => $productId,
-                'sku'          => $data['sku'],
-                'price'        => $data['price'],
-                'sale_price'   => $data['sale_price'] ?? null,
-                'attributes'   => $data['attributes'] ?? null,
+                'product_id' => $productId,
+                'sku' => $data['sku'],
+                'price' => $data['price'],
+                'sale_price' => $data['sale_price'] ?? null,
+                'attributes' => $data['attributes'] ?? null,
             ]);
 
             // 2. Create the inventory
@@ -52,11 +54,9 @@ class ProductVariantService
 
             // Update variant first
             $this->repo->update($variant, [
-                'sku'        => $data['sku'] ?? $variant->sku,
-                'price'      => $data['price'] ?? $variant->price,
-                'sale_price' => array_key_exists('sale_price', $data)
-                                ? $data['sale_price']
-                                : $variant->sale_price,
+                'sku' => $data['sku'] ?? $variant->sku,
+                'price' => $data['price'] ?? $variant->price,
+                'sale_price' => array_key_exists('sale_price', $data) ? $data['sale_price'] : $variant->sale_price,
                 'attributes' => $data['attributes'] ?? $variant->attributes,
             ]);
 
@@ -68,8 +68,13 @@ class ProductVariantService
                     'available' => $data['initial_stock'] ?? $inventory->available,
                     'low_stock_threshold' => $data['low_stock_threshold'] ?? $inventory->low_stock_threshold,
                 ]);
+            } else {
+                $this->repo->createInventory($variant->id, [
+                    'available' => $data['initial_stock'] ?? 0,
+                    'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
+                ]);
             }
-
+            
             return $variant->fresh('inventory');
         });
     }

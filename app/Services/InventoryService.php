@@ -64,6 +64,7 @@ class InventoryService
                     'inventory_after' => $after,
                     'notified_to' => null,
                     'notified_at' => now(),
+                    'notified_date' => now()->toDateString(),
                 ]);
                 // Optionally: dispatch notification job here
             }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProductVariantController;
 use App\Http\Controllers\Api\V1\InventoryController;
 use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\ProductImportController;
 
 
 /*
@@ -35,6 +36,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout',  [LogoutController::class, 'logout']);
         Route::get('/products', [ProductController::class, 'index']);
         Route::get('/products/{product}', [ProductController::class, 'show']);
+        Route::get('/products/search', [ProductController::class, 'search']);
         Route::get('/inventories/{variant}', [InventoryController::class, 'show']);
         Route::get('/products/{product}/variants', [ProductVariantController::class, 'index']);
         Route::get('/variants/{variant}', [ProductVariantController::class, 'show']);
@@ -58,5 +60,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/variants/{variant}', [ProductVariantController::class, 'destroy']);
 
         Route::post('/inventories/{variant}/adjust', [InventoryController::class, 'adjust']);
+
+        // CSV import endpoint
+        Route::post('/products/import', [ProductImportController::class, 'upload']);
+        Route::get('/products/import/{import}/status', [ProductImportController::class, 'status']);
     });
 });
