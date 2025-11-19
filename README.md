@@ -158,3 +158,11 @@ All protected endpoints require the token in the `Authorization` header.
 
 ### API Documentation
 The API is documented using OpenAPI 3.1.0 specification in openapi.yaml. For an interactive Swagger UI, visit the deployed documentation at [Order Management System API](https://akash-rumi.github.io/Order-Management-System/).
+
+### Testing Instruction
+Feature test/Unit tests are not implemented.
+
+### Author
+- *Name:* Munshi Allama Rumi
+- *Email:* akashrumi@gmail.com
+- *Github:* https://github.com/akash-rumi/
