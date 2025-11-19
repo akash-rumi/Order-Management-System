@@ -54,7 +54,7 @@ This project supports local development with Docker for a full-stack setup (PHP,
 
 #### Option 1: Docker Setup (Recommended)
 1. **clone repository:**
-    > `git clone <your-repo-url> ecommerce-order-system-docker`
+    > `git clone https://github.com/akash-rumi/OMSDE ecommerce-order-system-docker`
     > `cd ecommerce-order-system-docker`
 2. **Run the provided setup script for one-command initialization:**
     >`chmod +x setup.sh` 
@@ -72,7 +72,7 @@ This project supports local development with Docker for a full-stack setup (PHP,
 #### Option 2: Native Setup (Non-Docker)
 
 1. **clone repository:**
-    > `git clone <your-repo-url> ecommerce-order-system`
+    > `git clone https://github.com/akash-rumi/Order-Management-System ecommerce-order-system`
     > `cd ecommerce-order-system`
 
 2. **Copy Environment File:**
