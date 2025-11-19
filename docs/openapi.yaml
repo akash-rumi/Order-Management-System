@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+  title: Ecommerce API
+  description: Products, Variants, Inventory, Orders, Auth & CSV Import
+  version: 1.0.0
+
+servers:
+  - url: https://api.example.com/api/v1
+    description: Production
+  - url: http://127.0.0.1:8000/api/v1
+    description: Local
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        errors: { type: object }
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type:   { type: string, example: bearer }
+        expires_in:   { type: integer, example: 3600 }
+
+    Product:
+      type: object
+      properties:
+        id: { type: integer }
+        vendor_id: { type: integer, nullable: true }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    ProductVariant:
+      type: object
+      properties:
+        id: { type: integer }
+        product_id: { type: integer }
+        sku: { type: string }
+        price: { type: number, format: float }
+        sale_price: { type: number, format: float, nullable: true }
+        attributes: { type: object }
+        inventory:
+          type: object
+          properties:
+            available: { type: integer }
+            reserved: { type: integer }
+            low_stock_threshold: { type: integer }
+
+    OrderItem:
+      type: object
+      properties:
+        variant_id: { type: integer }
+        quantity: { type: integer }
+        unit_price: { type: number }
+        line_total: { type: number }
+
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        order_number: { type: string }
+        status: { type: string }
+        total_amount: { type: number }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ── AUTH ─────────────────────────────────────
+  /auth/register:
+    post:
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                role: { type: string, enum: [admin, vendor, customer] }
+      responses:
+        '201': { description: Created }
+
+  /auth/login:
+    post:
+      summary: Login → get token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/logout:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Logout (revoke token)
+      responses: { '200': { description: Logged out } }
+
+  /auth/refresh:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Refresh token
+      responses: { '200': { description: New token } }
+
+  # ── PRODUCTS & VARIANTS ──────────────────────
+  /products:
+    get:
+      summary: List products (paginated)
+      parameters:
+        - in: query
+          name: per_page
+          schema: { type: integer, default: 15 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Product' } }
+
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create product + variants
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                slug: { type: string }
+                description: { type: string }
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    required: [sku, price]
+                    properties:
+                      sku: { type: string }
+                      price: { type: number }
+                      initial_stock: { type: integer }
+      responses: { '201': { description: Created } }
+
+  /products/{product}/variants:
+    get:
+      parameters:
+        - in: path
+          name: product
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Variant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductVariant' }
+
+  /variants/{variant}:
+    get:
+      parameters:
+        - in: path
+          name: variant
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Single variant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductVariant' }
+
+  # ── INVENTORY & ORDERS ───────────────────────
+  /inventories/{variant}/adjust:
+    post:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: variant
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [delta]
+              properties:
+                delta: { type: integer }
+                reason: { type: string }
+      responses: { '200': { description: Adjusted } }
+
+  /orders:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: Create order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, shipping_address]
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [variant_id, quantity]
+                    properties:
+                      variant_id: { type: integer }
+                      quantity: { type: integer, minimum: 1 }
+                shipping_address: { type: object }
+      responses: { '201': { description: Order created } }
+
+  /products/import:
+    post:
+      security: [{ bearerAuth: [] }]
+      summary: CSV product import
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses: { '202': { description: Import queued } }

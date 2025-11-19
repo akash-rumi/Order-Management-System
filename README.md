@@ -1,64 +1,160 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# E-Commerce Order Management System
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Project Overview and Features
+This project is a scalable RESTful API built with Laravel 10+ and PHP 8.2+ for managing e-commerce orders with integrated inventory tracking. It simulates a real-world order processing system, emphasizing clean architecture, performance, and extensibility. The API follows API versioning (v1) and uses JWT for authentication with role-based access control (RBAC) via Spatie Laravel Permission.
 
-## About Laravel
+### Core Features
+1. **Product & Inventory Management**
+    - **Product CRUD with Variants:** Full create, read, update, delete operations for products, including support for variants (e.g., size, color) with SKUs.
+    - **Real-time Inventory Tracking:** Automatic stock adjustments on order confirmation/cancellation, with dedicated inventory models for each variant.
+    - **Low Stock Alerts (Queue Job):** Asynchronous queue jobs trigger email notifications when stock falls below a threshold (configurable).
+    - **Bulk Product Import via CSV:** Upload and process CSV files to import products and variants in bulk, queued for background processing.
+    - **Product Search:** Integrated with Laravel Scout and Elasticsearch for full-text search on product names, descriptions, and attributes.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+2. **Order Processing**
+    - **Create Orders with Multiple Items:** Customers can create orders with line items referencing variants, including shipping address.
+    - **Order Status Workflow:** Supports transitions: Pending → Processing → Shipped → Delivered → Cancelled. Status changes trigger events for notifications.
+    - **Inventory Deduction on Confirmation:** Deducts stock atomically using database transactions on order confirmation.
+    - **Order Rollback on Cancellation:** Restores inventory on cancellation, ensuring data integrity.
+    - **Invoice Generation (PDF):** Generates downloadable PDF invoices using Barryvdh Laravel DomPDF, triggered on status changes.
+    - **Email Notifications:** Event-driven emails for order updates (e.g., confirmation, shipment) using Laravel Mail and queue jobs.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+3. **Authentication & Authorization**
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+    - **JWT Authentication with Refresh Tokens:** Uses Tymon JWT-Auth for secure token-based auth, including login, register, logout, and refresh endpoints.
+    - R**ole-Based Access:**
+        * **Admin:** Full access to all resources (CRUD products, orders, users).
+        * **Vendor:** Manage own products, variants, inventory, and view associated orders.
+        * **Customer:** Place orders, view personal order history.
 
-## Learning Laravel
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Technical Highlights
+- **Architecture:** Repository pattern for data access, Service classes for business logic, Actions/Commands for complex ops (e.g., order confirmation), Events & Listeners for decoupling (e.g., stock alerts, emails).
+- **Async Operations:** Queue jobs (database driver) for emails, PDF generation, imports, and notifications.
+- **Data Integrity:** Database transactions for critical operations like inventory updates.
+- **Performance:** Eager loading to prevent N+1 queries, indexing on searchable fields (e.g., slugs, SKUs), pagination for lists.
+- **Scalability:** Documented database sharding strategy in SCALING.md (e.g., shard by vendor_id for large-scale vendor growth). Caching via file driver for frequent reads (e.g., product lists).
+- **Dependencies:** Key packages include `tymon/jwt-auth` for auth, `spatie/laravel-permission` for RBAC, `maatwebsite/excel` for CSV imports, `barryvdh/laravel-dompdf` for PDFs, and `laravel/scout` for search integration.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+**Note:** Testing (feature/unit tests) is pending implementation. API documentation via OpenAPI/Swagger and Postman collection are included.
 
-## Laravel Sponsors
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
 
-### Premium Partners
+## Local Setup Instructions (Step-by-Step)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+This project supports local development with Docker for a full-stack setup (PHP, MySQL, Nginx, Mailpit for emails, phpMyAdmin). Alternatively, use native PHP/MySQL if preferred.
 
-## Contributing
+### Prerequisites
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- Docker & Docker Compose (v2+)
+- Git
+- Composer (for non-Docker setup)
+- PHP 8.2+ (if not using Docker)
+- MySQL 5.7+ (if not using Docker)
 
-## Code of Conduct
+#### Option 1: Docker Setup (Recommended)
+1. **clone repository:**
+    > `git clone https://github.com/akash-rumi/OMSDE ecommerce-order-system-docker`
+    > `cd ecommerce-order-system-docker`
+2. **Run the provided setup script for one-command initialization:**
+    >`chmod +x setup.sh` 
+    > `./setup.sh`
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**This:**
+- Prunes existing containers.
+- Starts services via docker-compose -p srtsch up -d (in ./docker dir).
+- Waits 10s for readiness.
+- **Configures Laravel:** Copies .env.example to .env, installs Composer deps, generates key, runs migrate:fresh --seed.
+- **Sets permissions:** chmod -R 777 src.
 
-## Security Vulnerabilities
+**Access:** API '`http://localhost/api/v1`',  phpMyAdmin `localhost:8080`, Mailpit `localhost:8025`. **Start queue:** `docker exec -it php php artisan queue:work` .
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### Option 2: Native Setup (Non-Docker)
 
-## License
+1. **clone repository:**
+    > `git clone https://github.com/akash-rumi/Order-Management-System ecommerce-order-system`
+    > `cd ecommerce-order-system`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+2. **Copy Environment File:**
+    >`cp .env.example .env`
+
+3. **Install deps:** `composer install`
+4. **Generate key:** `php artisan key:generate`
+5. **Set up MySQL locally:** `(DB_NAME=laravel, USER=root, PASS=empty or custom)`.
+6. **Run migrations:** `php artisan migrate --seed`
+7. **Start server:** php artisan serve
+8. For emails, install Mailpit locally or use a service like Mailtrap.
+9. **Queue:** php artisan queue:work
+
+#### Troubleshooting
+
+- **Permissions:** Run `chmod -R 775` storage `bootstrap/cache` (or in Docker: docker-compose exec php chmod...).
+- **Logs:** Check `storage/logs/laravel.log` or Docker logs: docker-compose logs php.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure. Defaults for local dev (Docker: adjust DB/MAIL).
+
+| Variable             | Description                                                      | Default/Example                   | Required          |
+|----------------------|------------------------------------------------------------------|-----------------------------------|-------------------|
+| `APP_NAME`           | Application name                                                 | `Laravel`                         | No                |
+| `APP_ENV`            | Environment (local/production)                                   | `local`                           | No                |
+| `APP_KEY`            | Laravel encryption key (generate via `php artisan key:generate`) | Generated                         | Yes               |
+| `APP_DEBUG`          | Enable debug mode                                                | `true`                            | No                |
+| `APP_URL`            | Base URL                                                         | `http://localhost`                | No                |
+| `LOG_CHANNEL`        | Log driver                                                       | `stack`                           | No                |
+| `LOG_LEVEL`          | Log verbosity                                                    | `debug`                           | No                |
+| `DB_CONNECTION`      | Database driver                                                  | `mysql`                           | Yes               |
+| `DB_HOST`            | DB host (`db` in Docker)                                         | `127.0.0.1`                       | Yes               |
+| `DB_PORT`            | DB port                                                          | `3306`                            | Yes               |
+| `DB_DATABASE`        | DB name                                                          | `laravel`                         | Yes               |
+| `DB_USERNAME`        | DB user                                                          | `root` (native) / `akash` (Docker)| Yes               |
+| `DB_PASSWORD`        | DB password                                                      | `` (empty native) / `root` (Docker)| Yes              |
+| `BROADCAST_DRIVER`   | Broadcasting driver                                              | `log`                             | No                |
+| `CACHE_DRIVER`       | Cache driver (file local)                                        | `file`                            | No                |
+| `FILESYSTEM_DRIVER`  | Storage driver                                                   | `local`                           | No                |
+| `QUEUE_CONNECTION`   | Queue driver (database for jobs)                                 | `database`                        | Yes               |
+| `SESSION_DRIVER`     | Session driver                                                   | `file`                            | No                |
+| `SESSION_LIFETIME`   | Session expiry (minutes)                                         | `120`                             | No                |
+| `MAIL_MAILER`        | Mail driver                                                      | `smtp`                            | Yes               |
+| `MAIL_HOST`          | Mail host (`mailpit` in Docker)                                  | `mailpit`                         | Yes               |
+| `MAIL_PORT`          | Mail port                                                        | `1025`                            | Yes               |
+| `MAIL_USERNAME`      | Mail username                                                    | `null`                            | No                |
+| `MAIL_PASSWORD`      | Mail password                                                    | `null`                            | No                |
+| `MAIL_ENCRYPTION`    | Mail encryption                                                  | `null`                            | No                |
+| `MAIL_FROM_ADDRESS`  | From email                                                       | `no-reply@example.com`            | Yes               |
+| `MAIL_FROM_NAME`     | From name                                                        | `${APP_NAME}`                     | Yes               |
+| `JWT_SECRET`         | JWT token secret                                                 | Generated long string             | Yes               |
+| `SCOUT_DRIVER`       | Search driver                                                    | `elasticsearch` (or `database`)   | If search enabled |
+| `ELASTICSEARCH_HOST` | ES host (if Scout)                                               | `localhost:9200`                  | If ES enabled     |
+
+## Authentication Guide
+
+This API uses **Bearer tokens** issued by **Laravel Sanctum** .
+
+Tokens are long-lived by default in Sanctum but can be configured to expire.  
+All protected endpoints require the token in the `Authorization` header.
+
+### Endpoints Overview
+
+| Method | Endpoint            | Description                       | Auth Required |
+|--------|---------------------|-----------------------------------|---------------|
+| POST   | `/auth/register`    | Create a new user                 | No            |
+| POST   | `/auth/login`       | Login → receive access token      | No            |
+| POST   | `/auth/refresh`     | Get a new token (if expiry enabled) | Yes         |
+| POST   | `/auth/logout`      | Revoke current token              | Yes           |
+
+### 1. Register (optional – enable only if you allow self-signup)
+
+    POST {{base_url}}/auth/register
+    Content-Type: application/json
+
+    {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password",
+    "role": "customer"          // optional: admin | vendor | customer
+    }
+
+### API Documentation
+The API is documented using OpenAPI 3.1.0 specification in openapi.yaml. For an interactive Swagger UI, visit the deployed documentation at [Order Management System API](https://akash-rumi.github.io/Order-Management-System/).
