@@ -12,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use League\Csv\Reader;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 
 class ProcessProductImportJob implements ShouldQueue
@@ -79,7 +80,7 @@ class ProcessProductImportJob implements ShouldQueue
             try {
                 $vendorId = null;
                 if (!empty($r['vendor_email'])) {
-                    $vendor = \App\Models\User::where('email', $r['vendor_email'])->first();
+                    $vendor = User::where('email', $r['vendor_email'])->first();
                     if ($vendor) $vendorId = $vendor->id;
                 }
 

@@ -6,6 +6,8 @@ use App\Models\LowStockAlert;
 use App\Repositories\InventoryRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Events\LowStockAlertCreated;
+
 
 class InventoryService
 {
@@ -58,7 +60,7 @@ class InventoryService
 
             // If now below or equal threshold, create a low stock alert record (you may also dispatch a notification job)
             if ($inventory->available <= $inventory->low_stock_threshold) {
-                LowStockAlert::create([
+                $alert = LowStockAlert::create([
                     'variant_id' => $inventory->variant_id,
                     'inventory_before' => $before,
                     'inventory_after' => $after,
@@ -66,7 +68,7 @@ class InventoryService
                     'notified_at' => now(),
                     'notified_date' => now()->toDateString(),
                 ]);
-                // Optionally: dispatch notification job here
+                event(new LowStockAlertCreated($alert));
             }
 
             return $inventory;

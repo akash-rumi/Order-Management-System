@@ -42,9 +42,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/variants/{variant}', [ProductVariantController::class, 'show']);
 
         Route::post('/orders', [OrderController::class, 'store']);                    // create pending
-        Route::post('/orders/{order}/confirm', [OrderController::class, 'confirm']); // confirm & deduct stock
-        Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);   // cancel & restore
-        Route::post('/orders/{order}/status', [OrderController::class, 'changeStatus']);
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{order}', [OrderController::class, 'show']);
     });
@@ -64,5 +61,9 @@ Route::prefix('v1')->group(function () {
         // CSV import endpoint
         Route::post('/products/import', [ProductImportController::class, 'upload']);
         Route::get('/products/import/{import}/status', [ProductImportController::class, 'status']);
+
+        Route::post('/orders/{order}/confirm', [OrderController::class, 'confirm']); // confirm & deduct stock
+        Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);   // cancel & restore
+        Route::post('/orders/{order}/status', [OrderController::class, 'changeStatus']);
     });
 });
