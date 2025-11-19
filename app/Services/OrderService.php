@@ -8,6 +8,9 @@ use App\Repositories\OrderRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use App\Events\OrderConfirmed;
+use App\Events\OrderStatusChanged;
+
 
 class OrderService
 {
@@ -104,6 +107,7 @@ class OrderService
 
             $order->status = 'processing';
             $order->save();
+            event(new OrderConfirmed($order));
 
             return $order->fresh('items');
         });
@@ -124,8 +128,11 @@ class OrderService
                 }
             }
 
+            $old = $order->status;
+            $status = 'cancelled';
             $order->status = 'cancelled';
             $order->save();
+            event(new OrderStatusChanged($order, $old, $status));
 
             return $order->fresh('items');
         });
@@ -141,8 +148,10 @@ class OrderService
             throw ValidationException::withMessages(['status' => 'Invalid status']);
         }
 
+        $old = $order->status;
         $order->status = $status;
         $order->save();
+        event(new OrderStatusChanged($order, $old, $status));
 
         return $order->fresh('items');
     }

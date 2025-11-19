@@ -3,18 +3,22 @@
 namespace App\Services;
 
 use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\Inventory;
 use App\Repositories\ProductRepository;
+use App\Repositories\ProductVariantRepository;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class ProductService
 {
     protected ProductRepository $repo;
+    protected ProductVariantRepository $variantRepo;
+    protected ProductVariantService $variantService;
 
-    public function __construct(ProductRepository $repo)
+    public function __construct(ProductRepository $repo, ProductVariantRepository $variantRepo, ProductVariantService $variantService)
     {
         $this->repo = $repo;
+        $this->variantRepo = $variantRepo;
+        $this->variantService = $variantService;
     }
 
     public function list(array $filters = [], int $perPage = 15)
@@ -40,7 +44,7 @@ class ProductService
             $productData = [
                 'vendor_id' => $vendorId,
                 'name' => $data['name'],
-                'slug' => $data['slug'] ?? \Str::slug($data['name']),
+                'slug' => $data['slug'] ?? Str::slug($data['name']) . '-' . Str::random(4),
                 'description' => $data['description'] ?? null,
                 'is_active' => $data['is_active'] ?? true,
             ];
@@ -49,20 +53,12 @@ class ProductService
 
             if (!empty($data['variants'])) {
                 foreach ($data['variants'] as $v) {
-                    $variant = ProductVariant::create([
-                        'product_id' => $product->id,
+                    $this->variantService->createVariant($product->id,[
                         'sku' => $v['sku'],
                         'price' => $v['price'],
                         'sale_price' => $v['sale_price'] ?? null,
                         'attributes' => $v['attributes'] ?? null,
-                    ]);
-
-                    // create inventory for the variant
-                    $initialStock = isset($v['initial_stock']) ? (int)$v['initial_stock'] : 0;
-                    Inventory::create([
-                        'variant_id' => $variant->id,
-                        'available' => $initialStock,
-                        'reserved' => 0,
+                        'initial_stock' => $v['initial_stock'] ??  0,
                         'low_stock_threshold' => $v['low_stock_threshold'] ?? 5,
                     ]);
                 }
@@ -79,45 +75,25 @@ class ProductService
                 'name' => $data['name'] ?? null,
                 'slug' => $data['slug'] ?? null,
                 'description' => $data['description'] ?? null,
-                'is_active' => $data['is_active'] ?? null,
+                'is_active' => array_key_exists('is_active', $data) ? $data['is_active'] : null,
             ], fn($v) => !is_null($v));
 
-            $this->repo->update($product, $updateData);
+            if (!empty($updateData)) {
+                $this->repo->update($product, $updateData);
+            }
 
             // handle variants (create new or update existing)
             if (!empty($data['variants'])) {
                 foreach ($data['variants'] as $v) {
                     if (!empty($v['id'])) {
                         // update
-                        $variant = ProductVariant::where('id', $v['id'])
-                            ->where('product_id', $product->id)
-                            ->first();
-
-                        if ($variant) {
-                            $variant->update([
-                                'sku' => $v['sku'] ?? $variant->sku,
-                                'price' => $v['price'] ?? $variant->price,
-                                'sale_price' => $v['sale_price'] ?? $variant->sale_price,
-                                'attributes' => $v['attributes'] ?? $variant->attributes,
-                            ]);
+                        $variant = $this->variantRepo->find($v['id']);
+                        if ($variant && $variant->product_id == $product->id) {
+                            $this->variantService->updateVariant($variant, $v);
+                        } else {
+                            $this->variantService->createVariant($product->id, $v);
                         }
-                    } else {
-                        // create
-                        $variant = ProductVariant::create([
-                            'product_id' => $product->id,
-                            'sku' => $v['sku'],
-                            'price' => $v['price'],
-                            'sale_price' => $v['sale_price'] ?? null,
-                            'attributes' => $v['attributes'] ?? null,
-                        ]);
-
-                        Inventory::create([
-                            'variant_id' => $variant->id,
-                            'available' => isset($v['initial_stock']) ? (int)$v['initial_stock'] : 0,
-                            'reserved' => 0,
-                            'low_stock_threshold' => $v['low_stock_threshold'] ?? 5,
-                        ]);
-                    }
+                    } 
                 }
             }
 

@@ -5,7 +5,9 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 
 use App\Repositories\ProductRepository;
+use App\Services\ProductService;
 use App\Repositories\ProductVariantRepository;
+use App\Services\ProductVariantService;
 use App\Services\InventoryService;
 use App\Repositories\InventoryRepository;
 use App\Repositories\OrderRepository;
@@ -21,12 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(ProductRepository::class, function ($app) {
-            return new ProductRepository();
-        });
-        $this->app->singleton(ProductVariantRepository::class, function ($app) {
-            return new ProductVariantRepository();
-        });
+        $this->app->bind(ProductRepository::class, ProductRepository::class);
+        $this->app->bind(ProductVariantRepository::class, ProductVariantRepository::class);
+        $this->app->bind(ProductVariantService::class, ProductVariantService::class);
+        $this->app->bind(ProductService::class, ProductService::class);
         $this->app->singleton(InventoryRepository::class, function($app){
             return new InventoryRepository();
         });

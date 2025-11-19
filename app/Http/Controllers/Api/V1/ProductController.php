@@ -34,6 +34,15 @@ class ProductController extends Controller
         return ProductResource::collection($products);
     }
 
+    public function search(Request $request)
+    {
+        $q = (string)$request->get('q', '');
+        $perPage = (int)$request->get('per_page', 15);
+        $products = $this->service->search($q, $perPage);
+
+        return ProductResource::collection($products);
+    }
+
     public function show(Product $product)
     {
         $product = $this->service->get($product->id);

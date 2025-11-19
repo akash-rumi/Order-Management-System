@@ -10,6 +10,8 @@ use App\Repositories\OrderRepository;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use App\Models\Product;
+
 
 class OrderController extends Controller
 {
@@ -59,23 +61,9 @@ class OrderController extends Controller
     {
         $user = $request->user();
 
-        // Authorization
-        if ($user->hasRole('admin')) {
-            // allowed
-        } elseif ($user->hasRole('vendor')) {
-            // check vendor owns any product in the order
-            $owns = false;
-            foreach ($order->items as $item) {
-                $productId = $item->product_snapshot['product_id'] ?? null;
-                if ($productId) {
-                    $product = \App\Models\Product::find($productId);
-                    if ($product && $product->vendor_id === $user->id) { $owns = true; break; }
-                }
-            }
-            if (!$owns) return response()->json(['message'=>'Forbidden'], 403);
-        } else {
-            // customer
-            if ($order->user_id !== $user->id) return response()->json(['message'=>'Forbidden'], 403);
+        // Authorization: Admin can view any order, vendor can view orders containing their products, customer can view their own orders.
+        if (!$user->hasRole('admin') && !($user->hasRole('vendor') && $this->vendorOwnsOrderProducts($user, $order)) && !($order->user_id === $user->id)) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         return new OrderResource($order->load('items'));
@@ -84,7 +72,8 @@ class OrderController extends Controller
     public function confirm(Order $order, Request $request)
     {
         $user = $request->user();
-        if (!$user->hasRole('admin') && $order->user_id !== $user->id) {
+        // Authorization: Only admin or vendor who owns products in the order can confirm
+        if (!$user->hasRole('admin') && !($user->hasRole('vendor') && $this->vendorOwnsOrderProducts($user, $order))) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -101,7 +90,8 @@ class OrderController extends Controller
     public function cancel(Order $order, Request $request)
     {
         $user = $request->user();
-        if (!$user->hasRole('admin') && $order->user_id !== $user->id) {
+        // Authorization: Only admin or vendor who owns products in the order can cancel
+        if (!$user->hasRole('admin') && !($user->hasRole('vendor') && $this->vendorOwnsOrderProducts($user, $order))) { 
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -116,21 +106,9 @@ class OrderController extends Controller
     public function changeStatus(Order $order, ChangeOrderStatusRequest $request)
     {
         $user = $request->user();
-        if (!$user->hasRole('admin') && !$user->hasRole('vendor')) {
+        // Authorization: Only admin or vendor who owns products in the order can change status
+        if (!$user->hasRole('admin') && !($user->hasRole('vendor') && $this->vendorOwnsOrderProducts($user, $order))) {
             return response()->json(['message' => 'Forbidden'], 403);
-        }
-
-        // vendor ownership check for status change
-        if ($user->hasRole('vendor')) {
-            $owns = false;
-            foreach ($order->items as $item) {
-                $productId = $item->product_snapshot['product_id'] ?? null;
-                if ($productId) {
-                    $product = \App\Models\Product::find($productId);
-                    if ($product && $product->vendor_id === $user->id) { $owns = true; break; }
-                }
-            }
-            if (!$owns) return response()->json(['message'=>'Forbidden'], 403);
         }
 
         try {
@@ -140,5 +118,20 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Could not change status', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Helper function to check if a vendor owns any products within an order.
+     */
+    protected function vendorOwnsOrderProducts($user, Order $order): bool
+    {
+        foreach ($order->items as $item) {
+            $productId = $item->product_snapshot['product_id'] ?? null;
+            $product = $productId ? Product::find($productId) : null;
+            if ($product && $product->vendor_id === $user->id) { 
+                return true;
+            }
+        }
+        return false;
     }
 }

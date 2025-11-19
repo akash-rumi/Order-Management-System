@@ -6,6 +6,13 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use App\Events\OrderConfirmed;
+use App\Listeners\GenerateInvoiceAndSendEmail;
+use App\Events\OrderStatusChanged;
+use App\Listeners\SendOrderStatusChangedEmail;
+use App\Events\LowStockAlertCreated;
+use App\Listeners\SendLowStockAlertEmail;
+
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -17,6 +24,15 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
+        ],
+        OrderConfirmed::class => [
+            GenerateInvoiceAndSendEmail::class,
+        ],
+        OrderStatusChanged::class => [
+            SendOrderStatusChangedEmail::class,
+        ],
+        LowStockAlertCreated::class => [
+            SendLowStockAlertEmail::class,
         ],
     ];
 

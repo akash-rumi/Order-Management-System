@@ -32,6 +32,11 @@ class ProductRepository
         return Product::with(['variants.inventory','vendor'])->find($id);
     }
 
+    public function find(int $id): ?Product
+    {
+        return Product::find($id);
+    }
+
     public function create(array $data): Product
     {
         return Product::create($data);
@@ -46,5 +51,25 @@ class ProductRepository
     public function delete(Product $product): void
     {
         $product->delete();
+    }
+    
+    /**
+     * Full-text search using MATCH...AGAINST
+     * Returns a Collection of products (paginated handled by caller)
+     */
+    public function searchFullText(string $q, int $perPage = 15)
+    {
+        // Sanitize query
+        $q = trim($q);
+        if ($q === '') return collect();
+
+        // Use MATCH...AGAINST for relevance
+        $query = Product::query()
+            ->selectRaw('products.*, MATCH(name, description) AGAINST (? IN NATURAL LANGUAGE MODE) as relevance', [$q])
+            ->whereRaw('MATCH(name, description) AGAINST (? IN NATURAL LANGUAGE MODE)', [$q])
+            ->orderByDesc('relevance')
+            ->with(['variants.inventory','vendor']);
+
+        return $query->paginate($perPage);
     }
 }
