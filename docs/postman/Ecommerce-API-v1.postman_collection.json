@@ -1,0 +1,332 @@
+{
+  "info": {
+    "name": "Ecommerce API - Full Collection (with tests)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Full collection including auth register/logout, product CRUD, variant CRUD, inventory, orders, imports, invoices, search. Use environment variable `base_url` (e.g. http://127.0.0.1:8000/api/v1) and `token` populated by login."
+  },
+  "item": [
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"name\":\"Test User\",\n  \"email\":\"user@example.test\",\n  \"password\":\"password\",\n  \"role\":\"customer\"\n}" },
+        "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth","register"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Register returns 201', function(){ pm.response.to.have.status(201); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"email\":\"customer1@test.com\",\n  \"password\":\"password\"\n}" },
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth","login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 or 201', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });",
+              "var json = {}; try { json = pm.response.json(); } catch(e) { json = {}; }",
+              "pm.test('Access token exists', function(){ pm.expect(json).to.have.property('access_token'); });",
+              "if (json.access_token) { pm.environment.set('token', json.access_token); }",
+              "pm.test('Saved token to {{token}}', function(){ pm.expect(pm.environment.get('token')).to.be.a('string'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth - Logout",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth","logout"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Logout returns 200', function(){ pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth - Refresh",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth","refresh"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Refresh returns 200', function(){ pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Products",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/products?per_page=10", "host": ["{{base_url}}"], "path": ["products"], "query":[{"key":"per_page","value":"10"}] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });", "var json = pm.response.json(); pm.test('Has data or array', function(){ pm.expect(json).to.satisfy(v => Array.isArray(v.data) || Array.isArray(v)); });" ] } }
+      ]
+    },
+    {
+      "name": "Create Product",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\":\"Test Product API\",\n  \"slug\":\"test-product-api\",\n  \"description\":\"desc\",\n  \"is_active\":true\n}" },
+        "url": { "raw": "{{base_url}}/products", "host": ["{{base_url}}"], "path": ["products"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Create product returns 201', function(){ pm.response.to.have.status(201); });", "var json = pm.response.json(); var p = json.data || json; if(p.id) pm.environment.set('created_product_id', p.id);" ] } }
+      ]
+    },
+    {
+      "name": "Get Product by ID",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/products/{{created_product_id}}", "host": ["{{base_url}}"], "path": ["products","{{created_product_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Update Product",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"name\":\"Updated Product Name\"\n}" },
+        "url": { "raw": "{{base_url}}/products/{{created_product_id}}", "host": ["{{base_url}}"], "path": ["products","{{created_product_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Update returns 200 or 204', function(){ pm.expect(pm.response.code).to.be.oneOf([200,204]); });" ] } }
+      ]
+    },
+    {
+      "name": "Delete Product",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/products/{{created_product_id}}", "host": ["{{base_url}}"], "path": ["products","{{created_product_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Delete returns 200 or 204', function(){ pm.expect(pm.response.code).to.be.oneOf([200,204]); });" ] } }
+      ]
+    },
+    {
+      "name": "List Variants for Product",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/products/{{created_product_id}}/variants", "host": ["{{base_url}}"], "path": ["products","{{created_product_id}}","variants"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Create Variant for Product",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"sku\":\"API-TS-001\",\n  \"price\":500,\n  \"attributes\":{ \"size\":\"M\" },\n  \"initial_stock\":10\n}" },
+        "url": { "raw": "{{base_url}}/products/{{created_product_id}}/variants", "host": ["{{base_url}}"], "path": ["products","{{created_product_id}}","variants"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Variant create returns 201', function(){ pm.response.to.have.status(201); });", "var json = pm.response.json(); var payload = json.data || json; if(payload.id) pm.environment.set('created_variant_id', payload.id);" ] } }
+      ]
+    },
+    {
+      "name": "Get Variant by ID",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/variants/{{created_variant_id}}", "host": ["{{base_url}}"], "path": ["variants","{{created_variant_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Update Variant",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"price\":450,\n  \"initial_stock\":15\n}" },
+        "url": { "raw": "{{base_url}}/variants/{{created_variant_id}}", "host": ["{{base_url}}"], "path": ["variants","{{created_variant_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Variant update returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Delete Variant",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/variants/{{created_variant_id}}", "host": ["{{base_url}}"], "path": ["variants","{{created_variant_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Variant delete returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Get Inventory for Variant",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/inventories/{{created_variant_id}}", "host": ["{{base_url}}"], "path": ["inventories","{{created_variant_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Adjust Inventory",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"delta\":-2,\n  \"reason\":\"reservation\"\n}" },
+        "url": { "raw": "{{base_url}}/inventories/{{created_variant_id}}/adjust", "host": ["{{base_url}}"], "path": ["inventories","{{created_variant_id}}","adjust"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Adjust inventory returns 200', function(){ pm.response.to.have.status(200); });", "var json = pm.response.json(); pm.test('Response has available', function(){ var p = json.data || json; pm.expect(p).to.have.property('available'); });" ] } }
+      ]
+    },
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"items\": [ { \"variant_id\": {{created_variant_id}}, \"quantity\": 1 } ],\n  \"shipping_address\": { \"name\":\"Test\", \"line1\":\"Addr\", \"city\":\"Dhaka\", \"country\":\"Bangladesh\" }\n}" },
+        "url": { "raw": "{{base_url}}/orders", "host": ["{{base_url}}"], "path": ["orders"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Order create returns 201', function(){ pm.response.to.have.status(201); });", "var json = pm.response.json(); var p = json.data || json; if(p.id) pm.environment.set('created_order_id', p.id);" ] } }
+      ]
+    },
+    {
+      "name": "Get Order by ID",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/orders/{{created_order_id}}", "host": ["{{base_url}}"], "path": ["orders","{{created_order_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Status 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "List Orders",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/orders?per_page=10", "host": ["{{base_url}}"], "path": ["orders"], "query":[{"key":"per_page","value":"10"}] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('List orders returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Confirm Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/orders/{{created_order_id}}/confirm", "host": ["{{base_url}}"], "path": ["orders","{{created_order_id}}","confirm"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Confirm order returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Cancel Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/orders/{{created_order_id}}/cancel", "host": ["{{base_url}}"], "path": ["orders","{{created_order_id}}","cancel"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Cancel returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Change Order Status",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\":\"shipped\"\n}" },
+        "url": { "raw": "{{base_url}}/orders/{{created_order_id}}/status", "host": ["{{base_url}}"], "path": ["orders","{{created_order_id}}","status"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Change status returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Upload Product CSV Import",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "body": { "mode": "formdata", "formdata": [ { "key": "file", "type": "file", "src": "" } ] },
+        "url": { "raw": "{{base_url}}/products/import", "host": ["{{base_url}}"], "path": ["products","import"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Import queued returns 202 or 200', function(){ pm.expect(pm.response.code).to.be.oneOf([200,202]); });", "var json = {}; try{ json = pm.response.json(); } catch(e){}; pm.test('import_id exists', function(){ pm.expect(json).to.have.property('import_id'); if(json.import_id) pm.environment.set('last_import_id', json.import_id); });" ] } }
+      ]
+    },
+    {
+      "name": "Get Import Status",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/imports/{{last_import_id}}", "host": ["{{base_url}}"], "path": ["imports","{{last_import_id}}"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Import status returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    },
+    {
+      "name": "Search Products",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/products/search?q=t-shirt", "host": ["{{base_url}}"], "path": ["products","search"], "query":[{"key":"q","value":"t-shirt"}] }
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": [ "pm.test('Search returns 200', function(){ pm.response.to.have.status(200); });" ] } }
+      ]
+    }
+  ]
+}
